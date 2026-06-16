@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Khata Ledger Admin Portal</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- IonIcons for modern line icons -->
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+</head>
+<body>
+
+  <!-- Overlay for Drawers -->
+  <div class="drawer-overlay" id="overlay"></div>
+
+  <!-- Authentication Section -->
+  <div id="auth-section" class="auth-wrapper hidden">
+    <div class="auth-card">
+      <div class="auth-logo">KL</div>
+      <h2 class="auth-title">Welcome Back</h2>
+      <p class="auth-subtitle">Log in to manage your business ledger</p>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label">Admin Email</label>
+          <input type="email" id="email" class="form-input" placeholder="admin@khata.com" required value="admin@khata.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••" required value="admin123">
+        </div>
+        <button type="submit" class="btn">
+          <ion-icon name="log-in-outline"></ion-icon> Sign In
+        </button>
+      </form>
+      <div style="margin-top:20px;font-size:12px;color:var(--text-light)">
+        Dummy credentials: <strong>admin@khata.com</strong> / <strong>admin123</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary Application Layout -->
+  <div id="app-section" class="app-container hidden">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo" id="store-avatar">KL</div>
+        <div>
+          <h3 class="sidebar-title" id="store-name-title">Khata Ledger</h3>
+          <span style="font-size:11px;color:var(--text-light)">Admin Console</span>
+        </div>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li>
+          <a class="menu-link active" data-tab="dashboard">
+            <ion-icon name="grid-outline"></ion-icon> Dashboard
+          </a>
+        </li>
+        <li>
+          <a class="menu-link" data-tab="customers">
+            <ion-icon name="people-outline"></ion-icon> Customers
+          </a>
+        </li>
+        <li>
+          <a class="menu-link" data-tab="transactions">
+            <ion-icon name="cash-outline"></ion-icon> Transactions
+          </a>
+        </li>
+        <li>
+          <a class="menu-link" data-tab="tickets">
+            <ion-icon name="chatbubbles-outline"></ion-icon> Support Tickets
+          </a>
+        </li>
+        <li>
+          <a class="menu-link" data-tab="settings">
+            <ion-icon name="settings-outline"></ion-icon> Settings
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <a class="menu-link" id="theme-toggle" style="margin-bottom:10px;">
+          <ion-icon name="contrast-outline"></ion-icon> Theme Toggle
+        </a>
+        <a class="menu-link" id="logout-btn" style="color:var(--danger)">
+          <ion-icon name="log-out-outline"></ion-icon> Log Out
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      
+      <!-- Top Title and User Area -->
+      <header class="main-header">
+        <div class="page-title-section">
+          <h1 id="page-display-title">Business Portal</h1>
+          <p id="page-display-subtitle">Monitor accounts & customer balances</p>
+        </div>
+      </header>
+
+      <!-- TAB 1: DASHBOARD VIEW -->
+      <section id="dashboard-tab" class="tab-section">
+        <!-- KPI Metrics Grid -->
+        <div class="dashboard-grid">
+          <div class="stat-card">
+            <div class="card-title">Total Customers</div>
+            <div class="card-value" id="db-total-customers">0</div>
+            <div class="card-subtext">Active store ledger accounts</div>
+          </div>
+          <div class="stat-card">
+            <div class="card-title">Total Cash In</div>
+            <div class="card-value green-txt" id="db-total-in">₹0</div>
+            <div class="card-subtext">Received store collections</div>
+          </div>
+          <div class="stat-card card-danger">
+            <div class="card-title">Total Cash Out</div>
+            <div class="card-value red-txt" id="db-total-out">₹0</div>
+            <div class="card-subtext">Credit given to customers</div>
+          </div>
+          <div class="stat-card card-warning">
+            <div class="card-title" id="db-net-label">Net Receivable</div>
+            <div class="card-value" id="db-net-receivables">₹0</div>
+            <div class="card-subtext">Outstanding pending ledger sum</div>
+          </div>
+        </div>
+
+        <!-- Split Grid (Recent Transactions & Top Debtors) -->
+        <div class="dashboard-layout" style="margin-top:30px">
+          <!-- Left: Recent Activity -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3 class="panel-title">Recent Transactions</h3>
+              <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px;" onclick="switchTab('transactions')">View Logs</button>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
+                <tbody id="db-recent-activity">
+                  <!-- Dynamic content loaded via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right: Top Debtors -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3 class="panel-title">Top Debtors</h3>
+            </div>
+            <ul id="db-top-debtors" style="padding-left:0;">
+              <!-- Dynamic content loaded via JS -->
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: CUSTOMERS HUB -->
+      <section id="customers-tab" class="tab-section hidden">
+        <div class="panel-card">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Manage Customers</h3>
+              <p style="font-size:12px;color:var(--text-light)" id="c-count">0 Registered</p>
+            </div>
+            <button class="btn" style="width:auto;" onclick="openDrawer('add-customer-drawer')">
+              <ion-icon name="person-add-outline"></ion-icon> Add Customer
+            </button>
+          </div>
+
+          <div class="data-table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Customer Name</th>
+                  <th>Mobile</th>
+                  <th>Account Type</th>
+                  <th>Balance</th>
+                  <th>Status</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="c-table-body">
+                <!-- Dynamic content loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: TRANSACTIONS HUB -->
+      <section id="transactions-tab" class="tab-section hidden">
+        <div class="panel-card">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Global Ledger Logs</h3>
+              <p style="font-size:12px;color:var(--text-light)">Audit all cash inflows & outflows</p>
+            </div>
+            <button class="btn" style="width:auto;" onclick="openDrawer('add-tx-drawer')">
+              <ion-icon name="add-circle-outline"></ion-icon> Record Entry
+            </button>
+          </div>
+
+          <!-- Filters Row -->
+          <div style="display:flex;gap:15px;margin-bottom:25px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px;">
+              <select id="tx-filter-customer" class="form-input" onchange="filterTransactions()">
+                <option value="">All Customers</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:200px;">
+              <select id="tx-filter-type" class="form-input" onchange="filterTransactions()">
+                <option value="">All Types</option>
+                <option value="gave">YOU GAVE (Out)</option>
+                <option value="got">YOU GOT (In)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="data-table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Notes</th>
+                  <th class="text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="tx-table-body">
+                <!-- Dynamic content loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: SUPPORT TICKETS -->
+      <section id="tickets-tab" class="tab-section hidden">
+        <div class="panel-card" style="max-width: 800px; margin: 0 auto">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Support Desk Messages</h3>
+              <p style="font-size:12px;color:var(--text-light)">Queries submitted from mobile app help desk</p>
+            </div>
+          </div>
+          <div id="tickets-list">
+            <!-- Dynamic Ticket Items loaded via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: SETTINGS VIEW -->
+      <section id="settings-tab" class="tab-section hidden">
+        <div class="panel-card" style="max-width:700px; margin: 0 auto">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">Store & App Settings</h3>
+              <p style="font-size:12px;color:var(--text-light)">Update metadata synced dynamically with mobile users</p>
+            </div>
+          </div>
+
+          <form id="settings-form">
+            <div class="form-group">
+              <label class="form-label">Business Store Name</label>
+              <input type="text" id="s-biz-name" class="form-input" required>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div class="form-group">
+                <label class="form-label">Business Phone</label>
+                <input type="text" id="s-biz-phone" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Reminder Frequency</label>
+                <select id="s-freq" class="form-input">
+                  <option value="daily">Daily Summary</option>
+                  <option value="weekly">Weekly Summary</option>
+                  <option value="monthly">Monthly Summary</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Store Address</label>
+              <input type="text" id="s-biz-addr" class="form-input" required>
+            </div>
+            
+            <h4 style="margin:25px 0 15px;border-bottom:1px solid var(--border);padding-bottom:10px;">Preference Toggles</h4>
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+              <input type="checkbox" id="s-reminders" style="width:18px;height:18px;cursor:pointer">
+              <label for="s-reminders" style="font-size:14px;cursor:pointer">Enable Automated Payment Reminders</label>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+              <input type="checkbox" id="s-daily" style="width:18px;height:18px;cursor:pointer">
+              <label for="s-daily" style="font-size:14px;cursor:pointer">Daily EOD Summary Reports</label>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+              <input type="checkbox" id="s-sms" style="width:18px;height:18px;cursor:pointer">
+              <label for="s-sms" style="font-size:14px;cursor:pointer">Send Outbound SMS Alerts (charges apply)</label>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+              <input type="checkbox" id="s-updates" style="width:18px;height:18px;cursor:pointer">
+              <label for="s-updates" style="font-size:14px;cursor:pointer">App Auto-updates & Backup Sync</label>
+            </div>
+
+            <button type="submit" class="btn" style="margin-top:20px;">Save Configuration</button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- DRAWER 1: ADD CUSTOMER DRAWER -->
+  <div class="drawer" id="add-customer-drawer">
+    <div class="drawer-header">
+      <h3>Create Customer Account</h3>
+      <button class="close-btn" onclick="closeDrawer('add-customer-drawer')">&times;</button>
+    </div>
+    <form id="add-customer-form">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="c-name" class="form-input" placeholder="e.g. Asif Ali" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mobile Number</label>
+        <input type="text" id="c-phone" class="form-input" placeholder="e.g. +92 300 9988776">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Customer Classification</label>
+        <select id="c-type" class="form-input">
+          <option value="Regular">Regular</option>
+          <option value="Wholesale">Wholesale</option>
+          <option value="VIP">VIP</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1.5fr;gap:15px;margin-top:20px;">
+        <div class="form-group">
+          <label class="form-label">Opening Balance (Optional)</label>
+          <input type="number" id="c-balance" class="form-input" placeholder="0" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Balance Type</label>
+          <select id="c-bal-type" class="form-input">
+            <option value="gave">YOU GAVE (Owes Us)</option>
+            <option value="got">YOU GOT (We Owe)</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn" style="margin-top:25px;">Create Account</button>
+    </form>
+  </div>
+
+  <!-- DRAWER 2: ADD TRANSACTION DRAWER -->
+  <div class="drawer" id="add-tx-drawer">
+    <div class="drawer-header">
+      <h3>Record Ledger Entry</h3>
+      <button class="close-btn" onclick="closeDrawer('add-tx-drawer')">&times;</button>
+    </div>
+    <form id="add-tx-form">
+      <div class="form-group">
+        <label class="form-label">Select Customer Account</label>
+        <select id="tx-customer-select" class="form-input" required>
+          <!-- Loaded via JS -->
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:2.5fr 1.5fr;gap:15px">
+        <div class="form-group">
+          <label class="form-label">Transaction Amount</label>
+          <input type="number" id="tx-amount" class="form-input" placeholder="0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Transaction Type</label>
+          <select id="tx-type" class="form-input">
+            <option value="gave">YOU GAVE (Debit)</option>
+            <option value="got">YOU GOT (Credit)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Entry Date</label>
+        <input type="date" id="tx-date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remarks/Details</label>
+        <input type="text" id="tx-note" class="form-input" placeholder="e.g. Tea boxes / payment received">
+      </div>
+      <button type="submit" class="btn" style="margin-top:25px;">Save Entry</button>
+    </form>
+  </div>
+
+  <!-- DRAWER 3: CUSTOMER DETAIL LEDGER DRAWER -->
+  <div class="drawer" id="ledger-drawer" style="width: 550px; right: -550px">
+    <div class="drawer-header">
+      <div>
+        <h3 id="l-cust-name" style="font-size:22px">Customer Ledger</h3>
+        <p id="l-cust-phone" style="font-size:12px;color:var(--text-light)"></p>
+      </div>
+      <button class="close-btn" onclick="closeDrawer('ledger-drawer')">&times;</button>
+    </div>
+    
+    <div id="l-cust-status" style="background:var(--primary-light);padding:15px;border-radius:var(--radius-sm);font-weight:600;font-size:16px;text-align:center">
+      <!-- Loaded via JS -->
+    </div>
+
+    <div style="flex-grow:1;overflow-y:auto;margin-top:20px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="l-table-body">
+          <!-- Dynamic ledger loaded via JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

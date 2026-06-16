@@ -1,108 +1,231 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ScrollView } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity } from 'react-native';
+import Icon from '@expo/vector-icons/MaterialIcons';
 import { useData } from '../context/DataContext';
-import { useNavigation } from '@react-navigation/native';
+import { COLORS, SIZES, FONTS, SHADOWS } from '../utils/theme';
+import Header from '../components/Header';
 
-export default function CustomersScreen() {
-  const { customers } = useData();
+export default function CustomersScreen({ navigation }) {
+  const { customers, getTranslation, getCurrencySymbol } = useData();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
-  const navigation = useNavigation();
-
-  const filters = ['All', 'VIP', 'Wholesale', 'Regular', 'Risky'];
+  const [filter, setFilter] = useState('All'); // 'All', 'Give', 'Get'
 
   const filteredCustomers = customers.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search);
-    const matchesFilter = filter === 'All' || c.type === filter;
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || (c.phone && c.phone.includes(search));
+    
+    let matchesFilter = true;
+    if (filter === 'Give') matchesFilter = c.balance < 0;
+    if (filter === 'Get') matchesFilter = c.balance > 0;
+    
     return matchesSearch && matchesFilter;
   });
 
-  const getBalanceText = (balance) => {
-    if (balance > 0) return `You will get ₹${balance}`;
-    if (balance < 0) return `You will give ₹${Math.abs(balance)}`;
-    return `Settled ₹0`;
-  };
-
-  const getBalanceColor = (balance) => {
-    if (balance > 0) return '#28a745';
-    if (balance < 0) return '#dc3545';
-    return '#6c757d';
-  };
-
   return (
     <View style={styles.container}>
-      <View style={styles.searchBar}>
-        <Icon name="search" size={20} color="#888" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name or phone"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
+      <Header />
+      <View style={styles.header}>
+        <View style={styles.searchContainer}>
+          <Icon name="search" size={24} color={COLORS.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={getTranslation('searchCustomers')}
+            placeholderTextColor={COLORS.textMuted}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {filters.map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, filter === f && styles.filterChipActive]}
-            onPress={() => setFilter(f)}
+        <View style={styles.filterRow}>
+          <TouchableOpacity 
+            style={[styles.filterBtn, filter === 'All' && styles.filterBtnActive]}
+            onPress={() => setFilter('All')}
           >
-            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
+            <Text style={[styles.filterText, filter === 'All' && styles.filterTextActive]}>All</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          <TouchableOpacity 
+            style={[styles.filterBtn, filter === 'Get' && styles.filterBtnActive]}
+            onPress={() => setFilter('Get')}
+          >
+            <Text style={[styles.filterText, filter === 'Get' && styles.filterTextActive]}>{getTranslation('youllGet')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterBtn, filter === 'Give' && styles.filterBtnActive]}
+            onPress={() => setFilter('Give')}
+          >
+            <Text style={[styles.filterText, filter === 'Give' && styles.filterTextActive]}>{getTranslation('youllGive')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <FlatList
         data={filteredCustomers}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.id || item._id}
+        contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.customerCard}
-            onPress={() => navigation.navigate('CustomerDetail', { customer: item })}
+            style={styles.customerItem}
+            onPress={() => navigation.navigate('CustomersTab', { screen: 'CustomerDetail', params: { customerId: item.id || item._id }})}
           >
-            <View style={styles.customerInfo}>
-              <Text style={styles.customerName}>{item.name}</Text>
-              <Text style={styles.customerType}>{item.type}</Text>
-              <Text style={styles.customerPhone}>{item.phone}</Text>
+            <View style={styles.itemLeft}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+              </View>
+              <View>
+                <Text style={styles.customerName}>{item.name}</Text>
+                <Text style={styles.customerSub}>{item.phone || 'No phone'}</Text>
+              </View>
             </View>
-            <View style={styles.balanceContainer}>
-              <Text style={[styles.balance, { color: getBalanceColor(item.balance) }]}>
-                {getBalanceText(item.balance)}
+            <View style={styles.itemRight}>
+              <Text style={[
+                styles.balanceText, 
+                item.balance > 0 ? styles.colorSuccess : item.balance < 0 ? styles.colorDanger : styles.colorMuted
+              ]}>
+                {getCurrencySymbol()}{Math.abs(item.balance).toLocaleString()}
+              </Text>
+              <Text style={styles.balanceLabel}>
+                {item.balance > 0 ? getTranslation('youllGet') : item.balance < 0 ? getTranslation('youllGive') : getTranslation('settled')}
               </Text>
             </View>
           </TouchableOpacity>
         )}
-        ListFooterComponent={
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => navigation.navigate('AddCustomer')}
-          >
-            <Icon name="person-add" size={24} color="#fff" />
-            <Text style={styles.addButtonText}>Add Customer</Text>
-          </TouchableOpacity>
-        }
       />
+
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => navigation.navigate('CustomersTab', { screen: 'AddCustomer' })}
+      >
+        <Icon name="person-add" size={24} color={COLORS.white} />
+        <Text style={styles.fabText}>{getTranslation('addCustomer')}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 16, paddingHorizontal: 12, borderRadius: 10, elevation: 1 },
-  searchInput: { flex: 1, paddingVertical: 12, marginLeft: 8, fontSize: 16 },
-  filterRow: { paddingHorizontal: 12, marginBottom: 8 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#e9ecef', borderRadius: 20, marginHorizontal: 4 },
-  filterChipActive: { backgroundColor: '#2c7da0' },
-  filterText: { color: '#495057' },
-  filterTextActive: { color: '#fff' },
-  customerCard: { backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 12, padding: 16, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 1 },
-  customerInfo: { flex: 1 },
-  customerName: { fontSize: 16, fontWeight: '600' },
-  customerType: { fontSize: 12, color: '#6c757d', marginTop: 2 },
-  customerPhone: { fontSize: 12, color: '#888', marginTop: 2 },
-  balance: { fontSize: 14, fontWeight: '600' },
-  addButton: { flexDirection: 'row', backgroundColor: '#2c7da0', margin: 16, padding: 14, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: 8 },
+  container: { 
+    flex: 1, 
+    backgroundColor: COLORS.surface 
+  },
+  header: {
+    backgroundColor: COLORS.white,
+    padding: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusLg,
+    paddingHorizontal: SIZES.md,
+    height: 48,
+    marginBottom: SIZES.md,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.fontMd,
+    fontFamily: FONTS.regular,
+    color: COLORS.text,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  filterBtn: {
+    flex: 1,
+    paddingVertical: SIZES.sm,
+    alignItems: 'center',
+    borderRadius: SIZES.radiusLg,
+    backgroundColor: COLORS.surface,
+    marginHorizontal: 4,
+  },
+  filterBtnActive: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  filterText: {
+    color: COLORS.textLight,
+    fontFamily: FONTS.medium,
+    fontWeight: '500',
+  },
+  filterTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  listContent: {
+    padding: SIZES.md,
+    paddingBottom: 80, // For FAB
+  },
+  customerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: SIZES.md,
+    borderRadius: SIZES.radiusLg,
+    marginBottom: SIZES.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  itemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SIZES.md,
+  },
+  avatarText: {
+    color: COLORS.primary,
+    fontSize: SIZES.fontLg,
+    fontWeight: 'bold',
+  },
+  customerName: {
+    fontSize: SIZES.fontMd,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  customerSub: {
+    fontSize: SIZES.fontSm,
+    color: COLORS.textLight,
+  },
+  itemRight: {
+    alignItems: 'flex-end',
+  },
+  balanceText: {
+    fontSize: SIZES.fontLg,
+    fontWeight: 'bold',
+  },
+  balanceLabel: {
+    fontSize: 10,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  colorSuccess: { color: COLORS.success },
+  colorDanger: { color: COLORS.danger },
+  colorMuted: { color: COLORS.textMuted },
+  fab: {
+    position: 'absolute',
+    bottom: SIZES.lg,
+    right: SIZES.lg,
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SIZES.md,
+    paddingHorizontal: SIZES.lg,
+    borderRadius: 30,
+    ...SHADOWS.md,
+  },
+  fabText: {
+    color: COLORS.white,
+    fontWeight: 'bold',
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.fontMd,
+  }
 });

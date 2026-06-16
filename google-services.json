@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "951317980572",
+    "project_id": "balancebook-b0fb0",
+    "storage_bucket": "balancebook-b0fb0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:951317980572:android:balancebook_android_placeholder",
+        "android_client_info": {
+          "package_name": "com.skyrasoft.balancebook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeAIzojhuqv_Kerms46Y5XZ8V-lZe5CTc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

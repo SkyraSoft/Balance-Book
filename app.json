@@ -1,6 +1,7 @@
 {
   "expo": {
-    "name": "BalanceBook",
+    "name": "Balance Book",
+    "owner": "skyrasoftappdevs-team",
     "slug": "balancebook",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,17 +16,27 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.skyrasoft.balancebook"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.balancebook.app"
+      "package": "com.skyrasoft.balancebook"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fcbc6035-5c91-4790-9f4f-f3b5db337244"
+      }
     }
   }
 }
