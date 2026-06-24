@@ -1,11 +1,35 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { useData } from '../context/DataContext';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../utils/theme';
 import Icon from '@expo/vector-icons/MaterialIcons';
 
 export default function AdminSettingsScreen() {
-  const { logOut, isOnline } = useData();
+  const { logOut, isOnline, globalContent, updateGlobalContent } = useData();
+  
+  const [cmsForm, setCmsForm] = useState(globalContent || {});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (globalContent) {
+      setCmsForm(globalContent);
+    }
+  }, [globalContent]);
+
+  const handleSaveCMS = async () => {
+    if (!isOnline) {
+      Alert.alert('Offline', 'Cannot save CMS content while offline.');
+      return;
+    }
+    setSaving(true);
+    const res = await updateGlobalContent(cmsForm);
+    setSaving(false);
+    if (res.success) {
+      Alert.alert('Success', 'Global content updated successfully. Live for all users.');
+    } else {
+      Alert.alert('Error', res.message);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -33,6 +57,65 @@ export default function AdminSettingsScreen() {
         <Text style={styles.label}>Active Database Services</Text>
         <Text style={{ fontSize: 13, color: COLORS.text, marginTop: 4 }}>• Cloud Firestore (Multi-tenant Ledger)</Text>
         <Text style={{ fontSize: 13, color: COLORS.text, marginTop: 4 }}>• Firebase Authentication</Text>
+      </View>
+
+      {/* Global CMS Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Content Management System (CMS)</Text>
+        
+        <Text style={styles.label}>Help & Support Contact Email</Text>
+        <TextInput 
+          style={styles.cmsInput} 
+          value={cmsForm.helpEmail} 
+          onChangeText={text => setCmsForm({...cmsForm, helpEmail: text})} 
+        />
+
+        <Text style={styles.label}>Help & Support Contact Phone</Text>
+        <TextInput 
+          style={styles.cmsInput} 
+          value={cmsForm.helpPhone} 
+          onChangeText={text => setCmsForm({...cmsForm, helpPhone: text})} 
+        />
+
+        <Text style={styles.label}>Help Intro Text</Text>
+        <TextInput 
+          style={[styles.cmsInput, { height: 80 }]} 
+          multiline 
+          textAlignVertical="top"
+          value={cmsForm.helpIntro} 
+          onChangeText={text => setCmsForm({...cmsForm, helpIntro: text})} 
+        />
+
+        <Text style={styles.label}>User Guide (Markdown supported)</Text>
+        <TextInput 
+          style={[styles.cmsInput, { height: 120 }]} 
+          multiline 
+          textAlignVertical="top"
+          value={cmsForm.userGuide} 
+          onChangeText={text => setCmsForm({...cmsForm, userGuide: text})} 
+        />
+
+        <Text style={styles.label}>Privacy Policy Text</Text>
+        <TextInput 
+          style={[styles.cmsInput, { height: 120 }]} 
+          multiline 
+          textAlignVertical="top"
+          value={cmsForm.privacyText} 
+          onChangeText={text => setCmsForm({...cmsForm, privacyText: text})} 
+        />
+
+        <Text style={styles.label}>Terms & Conditions Text</Text>
+        <TextInput 
+          style={[styles.cmsInput, { height: 120 }]} 
+          multiline 
+          textAlignVertical="top"
+          value={cmsForm.termsText} 
+          onChangeText={text => setCmsForm({...cmsForm, termsText: text})} 
+        />
+
+        <TouchableOpacity style={styles.saveCmsBtn} onPress={handleSaveCMS} disabled={saving}>
+          {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.saveCmsText}>Publish Changes Globally</Text>}
+        </TouchableOpacity>
       </View>
 
       {/* Simulation options */}
@@ -223,5 +306,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
     marginLeft: 8,
+  },
+  cmsInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.sm,
+    fontSize: 13,
+    color: COLORS.text,
+    backgroundColor: '#FAFBFC',
+    marginBottom: SIZES.md,
+  },
+  saveCmsBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius,
+    paddingVertical: SIZES.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: SIZES.sm,
+  },
+  saveCmsText: {
+    color: COLORS.white,
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

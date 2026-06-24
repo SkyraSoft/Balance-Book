@@ -18,10 +18,25 @@ export default function LanguageCurrencyScreen({ navigation }) {
 
   const languages = [
     { code: 'en', label: 'English' },
-    { code: 'ur', label: 'اردو (Urdu)' },
+    { code: 'zh', label: '中文 (Mandarin)' },
     { code: 'hi', label: 'हिन्दी (Hindi)' },
-    { code: 'ar', label: 'العربية (Arabic)' },
     { code: 'es', label: 'Español (Spanish)' },
+    { code: 'fr', label: 'Français (French)' },
+    { code: 'ar', label: 'العربية (Arabic)' },
+    { code: 'bn', label: 'বাংলা (Bengali)' },
+    { code: 'ru', label: 'Русский (Russian)' },
+    { code: 'pt', label: 'Português (Portuguese)' },
+    { code: 'ur', label: 'اردو (Urdu)' },
+    { code: 'id', label: 'Bahasa Indonesia' },
+    { code: 'de', label: 'Deutsch (German)' },
+    { code: 'ja', label: '日本語 (Japanese)' },
+    { code: 'sw', label: 'Kiswahili (Swahili)' },
+    { code: 'mr', label: 'मराठी (Marathi)' },
+    { code: 'te', label: 'తెలుగు (Telugu)' },
+    { code: 'tr', label: 'Türkçe (Turkish)' },
+    { code: 'ta', label: 'தமிழ் (Tamil)' },
+    { code: 'vi', label: 'Tiếng Việt (Vietnamese)' },
+    { code: 'ko', label: '한국어 (Korean)' },
   ];
 
   const filteredCurrencies = CURRENCIES.filter(c => 

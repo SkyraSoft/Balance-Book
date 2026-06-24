@@ -81,6 +81,12 @@ export default function SettingsScreen({ navigation }) {
             onPress={() => navigation.navigate('HelpSupport')} 
           />
           <MenuItem 
+            icon="book" 
+            title="User Guide" 
+            desc="Detailed manual for app features"
+            onPress={() => navigation.navigate('UserGuide')} 
+          />
+          <MenuItem 
             icon="backup" 
             title="Backup & Restore" 
             desc="Automatic daily cloud syncs"

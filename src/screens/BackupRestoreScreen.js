@@ -5,30 +5,90 @@ import { useData } from '../context/DataContext';
 import { COLORS, SIZES, SHADOWS } from '../utils/theme';
 import Header from '../components/Header';
 
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
+
 export default function BackupRestoreScreen() {
-  const { customers, transactions, syncWithServer, isOnline, userEmail } = useData();
+  const { customers, transactions, settings, syncWithServer, isOnline, userEmail, setCustomers, setTransactions } = useData();
   const [loading, setLoading] = useState(false);
 
   const handleBackup = async () => {
     setLoading(true);
     try {
-      await syncWithServer();
-      Alert.alert('Backup Successful', `Successfully synced ${customers.length} customer ledgers and ${transactions.length} transaction entries to the cloud.`);
+      // Create JSON backup object
+      const backupData = {
+        customers,
+        transactions,
+        settings,
+        exportDate: new Date().toISOString(),
+        version: "1.0"
+      };
+      
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const fileName = `BalanceBook_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      await FileSystem.writeAsStringAsync(fileUri, jsonStr, { encoding: FileSystem.EncodingType.UTF8 });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
+      } else {
+        Alert.alert('Success', `Backup saved to ${fileUri}`);
+      }
     } catch (err) {
-      Alert.alert('Backup Failed', 'An error occurred during server backup sync.');
+      console.error(err);
+      Alert.alert('Backup Failed', 'An error occurred while generating the local backup.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleRestore = async () => {
-    setLoading(true);
     try {
-      await syncWithServer();
-      Alert.alert('Restore Complete', 'Current local cache replaced. Successfully restored latest statements data from server.');
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', '*/*'],
+        copyToCacheDirectory: true
+      });
+
+      if (result.canceled) return;
+      
+      setLoading(true);
+      const fileUri = result.assets[0].uri;
+      const fileContents = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.UTF8 });
+      
+      try {
+        const parsedData = JSON.parse(fileContents);
+        if (!parsedData.customers || !parsedData.transactions) {
+          throw new Error("Invalid backup format");
+        }
+        
+        // Quick local merge/overwrite (For simplicity, we append new records)
+        // Or we can just prompt user to overwrite or merge.
+        Alert.alert(
+          'Restore Data',
+          `Found ${parsedData.customers.length} customers and ${parsedData.transactions.length} transactions in backup. Do you want to merge or replace existing data?`,
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => setLoading(false) },
+            { 
+              text: 'Replace All', 
+              style: 'destructive',
+              onPress: async () => {
+                await setCustomers(parsedData.customers);
+                await setTransactions(parsedData.transactions);
+                Alert.alert('Success', 'Data completely restored and replaced from backup.');
+                setLoading(false);
+              }
+            }
+          ]
+        );
+      } catch (e) {
+        Alert.alert('Invalid File', 'The selected file is not a valid Balance Book backup JSON.');
+        setLoading(false);
+      }
     } catch (err) {
-      Alert.alert('Restore Failed', 'Failed to retrieve backup files from the server.');
-    } finally {
+      console.error(err);
+      Alert.alert('Restore Failed', 'Failed to read the backup file.');
       setLoading(false);
     }
   };

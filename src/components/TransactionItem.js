@@ -25,14 +25,27 @@ export default function TransactionItem({ transaction }) {
   return (
     <View style={styles.container}>
       <View style={styles.left}>
-        <Text style={styles.note}>{transaction.note || 'No description'}</Text>
+        <Text style={styles.note}>{transaction.note || 'No Title'}</Text>
+        {transaction.description ? (
+          <Text style={styles.descText} numberOfLines={2}>{transaction.description}</Text>
+        ) : null}
         <Text style={styles.date}>{formatTxDate(transaction.date)}</Text>
       </View>
       <View style={styles.right}>
         <Text style={[styles.amount, { color: isGave ? COLORS.danger : COLORS.success }]}>
           {isGave ? `- ${getCurrencySymbol()}${transaction.amount.toLocaleString()}` : `+ ${getCurrencySymbol()}${transaction.amount.toLocaleString()}`}
         </Text>
-        {transaction.attachment && (
+        {transaction.originalAmount && transaction.originalCurrency && (
+          <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2, textAlign: 'right' }}>
+            (Orig: {transaction.originalAmount} {transaction.originalCurrency})
+          </Text>
+        )}
+        {(transaction.status === 'pending_peer_approval' || transaction.status === 'pending') ? (
+          <View style={styles.pendingBadge}>
+            <Icon name="schedule" size={14} color="#F59E0B" />
+            <Text style={styles.pendingText}>Pending Peer</Text>
+          </View>
+        ) : transaction.attachment && (
           <TouchableOpacity style={styles.shareBtn}>
             <Icon name="receipt" size={16} color={COLORS.primary} />
             <Text style={styles.shareText}>RECEIPT</Text>
@@ -65,6 +78,13 @@ const styles = StyleSheet.create({
     fontSize: SIZES.fontSm, 
     color: COLORS.textLight,
   },
+  descText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+    marginBottom: 4,
+    lineHeight: 16,
+  },
   right: { alignItems: 'flex-end', justifyContent: 'center' },
   amount: { 
     fontSize: SIZES.fontLg, 
@@ -82,6 +102,21 @@ const styles = StyleSheet.create({
   shareText: { 
     fontSize: 10, 
     color: COLORS.primary, 
+    marginLeft: 4,
+    fontWeight: 'bold',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SIZES.xs,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 4,
+    borderRadius: SIZES.radius,
+  },
+  pendingText: {
+    fontSize: 10,
+    color: '#D97706',
     marginLeft: 4,
     fontWeight: 'bold',
   },

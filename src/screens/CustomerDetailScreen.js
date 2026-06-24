@@ -7,10 +7,11 @@ import TransactionItem from '../components/TransactionItem';
 import { subDays, isAfter } from 'date-fns';
 import { Picker } from '@react-native-picker/picker';
 import Header from '../components/Header';
+import { calculateTrustScore, predictSettlement } from '../utils/aiHeuristics';
 
 export default function CustomerDetailScreen({ route, navigation }) {
   const { customerId } = route.params;
-  const { customers, getCustomerTransactions, getTranslation, getCurrencySymbol, settings, updateTransaction, deleteTransaction } = useData();
+  const { customers, getCustomerTransactions, getTranslation, getCurrencySymbol, settings, updateTransaction, deleteTransaction, addTransaction, activeWorkspace, token } = useData();
   
   const customer = customers.find(c => (c.id === customerId || c._id === customerId)) || route.params.customer;
   const [filter, setFilter] = useState('all');
@@ -27,6 +28,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
   const [editAmount, setEditAmount] = useState('');
   const [editType, setEditType] = useState('gave');
   const [editNote, setEditNote] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory] = useState('Goods');
   const [editReason, setEditReason] = useState('');
 
@@ -38,6 +40,16 @@ export default function CustomerDetailScreen({ route, navigation }) {
         <Text style={styles.emptyText}>Customer not found.</Text>
       </View>
     );
+  }
+
+  // RBAC Enforcement
+  let canGive = true;
+  let canGot = true;
+  if (activeWorkspace !== 'personal') {
+    const role = activeWorkspace.roles?.[token] || 'viewer';
+    if (role === 'viewer') { canGive = false; canGot = false; }
+    else if (role === 'sender') { canGot = false; }
+    else if (role === 'receiver') { canGive = false; }
   }
 
   // Filter transactions by date range presets, category tags, and amount ranges
@@ -128,6 +140,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
     
     setEditCategory(categoryFound);
     setEditNote(noteText);
+    setEditDescription(tx.description || '');
     setEditReason('');
     setEditModalVisible(true);
   };
@@ -148,6 +161,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
       amount: parseFloat(editAmount),
       type: editType,
       note: noteWithTag,
+      description: editDescription.trim(),
     }, editReason.trim());
 
     if (res.success) {
@@ -181,16 +195,89 @@ export default function CustomerDetailScreen({ route, navigation }) {
     );
   };
 
+  const handleMarkPaid = async () => {
+    Alert.alert('Settle Transaction', 'This will mark this invoice as paid and automatically record a matching "YOU GOT" payment. Proceed?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Yes, Settle', onPress: async () => {
+          const res = await updateTransaction(editingTx.id || editingTx._id, {
+            status: 'settled',
+          }, 'Marked as Paid via auto-settlement');
+          
+          if (res.success) {
+            await addTransaction({
+              customerId: customer.id || customer._id,
+              amount: parseFloat(editingTx.amount),
+              type: 'got',
+              note: `Settlement: ${editingTx.note || 'Invoice'}`,
+              description: 'Auto-generated settlement for marked invoice.',
+              date: new Date().toISOString(),
+              status: 'confirmed',
+            });
+            Alert.alert('Success', 'Transaction marked as paid.');
+            setEditModalVisible(false);
+          } else {
+            Alert.alert('Error', 'Failed to settle transaction.');
+          }
+      }}
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <Header />
       {/* Header Stat Card */}
       <View style={styles.header}>
-        <View style={styles.balanceContainer}>
-          <Text style={styles.balanceLabel}>{getBalanceText()}</Text>
+        <View style={[
+          styles.balanceContainer,
+          customer.balance > 0 ? styles.balanceGotContainer : customer.balance < 0 ? styles.balanceGaveContainer : styles.balanceSettledContainer
+        ]}>
+          <View style={styles.balanceHeaderRow}>
+            <Icon 
+              name={customer.balance > 0 ? 'arrow-downward' : customer.balance < 0 ? 'arrow-upward' : 'check-circle'} 
+              size={18} 
+              color={balanceColor} 
+            />
+            <Text style={[styles.balanceLabel, { color: balanceColor }]}>{getBalanceText()}</Text>
+          </View>
           <Text style={[styles.balanceAmount, { color: balanceColor }]}>{getBalanceAmount()}</Text>
+          
+          <View style={styles.divider} />
+          
+          {customer.pairedUserId ? (
+            <View style={styles.pairedBannerInline}>
+              <Icon name="verified" size={14} color="#0D9488" />
+              <Text style={styles.pairedBannerTextInline}>Real-Time Synced Account</Text>
+            </View>
+          ) : (
+            <View style={styles.pairedBannerInline}>
+              <Icon name="info-outline" size={14} color={COLORS.textLight} />
+              <Text style={[styles.pairedBannerTextInline, { color: COLORS.textLight }]}>Local Ledger (Not Paired)</Text>
+            </View>
+          )}
         </View>
       </View>
+
+      {/* Smart Peer Insights Dashboard */}
+      {customer.pairedUserId && (
+        <View style={styles.aiInsightsContainer}>
+          <View style={styles.aiHeader}>
+            <Icon name="auto-awesome" size={16} color="#6366F1" />
+            <Text style={styles.aiTitle}>Smart Peer Intelligence</Text>
+          </View>
+          <View style={styles.aiStatsRow}>
+            <View style={styles.aiStatBox}>
+              <Text style={styles.aiStatValue}>{calculateTrustScore(rawTransactions)}/100</Text>
+              <Text style={styles.aiStatLabel}>Trust Score</Text>
+            </View>
+            <View style={styles.aiStatBox}>
+              <Text style={[styles.aiStatValue, { fontSize: 13, color: COLORS.text }]}>
+                {predictSettlement(rawTransactions)}
+              </Text>
+              <Text style={styles.aiStatLabel}>Settlement Prediction</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Advanced Filter Panel */}
       <View style={styles.filterPanel}>
@@ -331,13 +418,24 @@ export default function CustomerDetailScreen({ route, navigation }) {
                 </View>
 
                 {/* Note Description */}
-                <Text style={styles.modalLabel}>Description / Notes</Text>
+                <Text style={styles.modalLabel}>Title</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={editNote}
                   onChangeText={setEditNote}
-                  placeholder="Details of the transaction"
+                  placeholder="Short Title"
                 />
+
+                <Text style={styles.modalLabel}>Description (Optional)</Text>
+                <TextInput
+                  style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]}
+                  value={editDescription}
+                  onChangeText={setEditDescription}
+                  placeholder="Why did you borrow/lend this?"
+                  multiline
+                  maxLength={350}
+                />
+                <Text style={{ textAlign: 'right', fontSize: 12, color: COLORS.textLight }}>{editDescription.length}/350</Text>
 
                 {/* Mandatory Edit Reason */}
                 <Text style={[styles.modalLabel, { color: COLORS.danger }]}>Reason for Change (Required)</Text>
@@ -371,6 +469,15 @@ export default function CustomerDetailScreen({ route, navigation }) {
 
               {/* Modal Save/Cancel Controls */}
               <View style={styles.modalActions}>
+                {editType === 'gave' && editingTx.status !== 'settled' && (
+                  <TouchableOpacity 
+                    style={[styles.modalBtn, { backgroundColor: '#F59E0B', flex: 0.8, marginRight: 8 }]}
+                    onPress={handleMarkPaid}
+                  >
+                    <Icon name="check-circle" size={18} color={COLORS.white} />
+                    <Text style={styles.modalBtnSaveText}>Mark Paid</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity 
                   style={[styles.modalBtn, styles.modalBtnCancel]}
                   onPress={() => setEditModalVisible(false)}
@@ -403,18 +510,22 @@ export default function CustomerDetailScreen({ route, navigation }) {
         )}
 
         <View style={styles.transactionActions}>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.btnDanger]}
-            onPress={() => navigation.navigate('CustomersTab', { screen: 'AddEntry', params: { customerId: customer.id || customer._id, type: 'gave' }})}
-          >
-            <Text style={styles.actionBtnText}>YOU GAVE</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.btnSuccess]}
-            onPress={() => navigation.navigate('CustomersTab', { screen: 'AddEntry', params: { customerId: customer.id || customer._id, type: 'got' }})}
-          >
-            <Text style={styles.actionBtnText}>YOU GOT</Text>
-          </TouchableOpacity>
+          {canGive && (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnDanger]}
+              onPress={() => navigation.navigate('CustomersTab', { screen: 'AddEntry', params: { customerId: customer.id || customer._id, type: 'gave' }})}
+            >
+              <Text style={styles.actionBtnText}>YOU GAVE</Text>
+            </TouchableOpacity>
+          )}
+          {canGot && (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnSuccess]}
+              onPress={() => navigation.navigate('CustomersTab', { screen: 'AddEntry', params: { customerId: customer.id || customer._id, type: 'got' }})}
+            >
+              <Text style={styles.actionBtnText}>YOU GOT</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -449,6 +560,55 @@ const styles = StyleSheet.create({
     fontSize: 26, 
     fontWeight: 'bold', 
     marginTop: SIZES.xs 
+  },
+  aiInsightsContainer: {
+    backgroundColor: '#EEF2FF',
+    marginHorizontal: SIZES.lg,
+    marginTop: -SIZES.sm,
+    marginBottom: SIZES.md,
+    padding: SIZES.md,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+    gap: 6,
+  },
+  aiTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#4F46E5',
+    textTransform: 'uppercase',
+  },
+  aiStatsRow: {
+    flexDirection: 'row',
+    gap: SIZES.sm,
+  },
+  aiStatBox: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiStatValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6366F1',
+    textAlign: 'center',
+  },
+  aiStatLabel: {
+    fontSize: 10,
+    color: COLORS.textLight,
+    marginTop: 4,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   filterPanel: {
     flexDirection: 'row',
@@ -729,4 +889,39 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginTop: 2,
   },
+  balanceGotContainer: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  balanceGaveContainer: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  balanceSettledContainer: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+  },
+  balanceHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    width: '100%',
+    marginVertical: 10,
+  },
+  pairedBannerInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pairedBannerTextInline: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0D9488',
+  },
 });
+

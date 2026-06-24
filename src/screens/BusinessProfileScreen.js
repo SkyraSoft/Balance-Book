@@ -11,6 +11,8 @@ export default function BusinessProfileScreen({ navigation }) {
   const [name, setName] = useState(settings.businessName || '');
   const [phone, setPhone] = useState(settings.businessPhone || '');
   const [address, setAddress] = useState(settings.businessAddress || '');
+  const [country, setCountry] = useState(settings.country || '');
+  const [businessType, setBusinessType] = useState(settings.businessType || '');
   const [profileImage, setProfileImage] = useState(settings.profileImage || '');
 
   const pickImage = async () => {
@@ -41,6 +43,8 @@ export default function BusinessProfileScreen({ navigation }) {
       businessName: name, 
       businessPhone: phone, 
       businessAddress: address,
+      country: country,
+      businessType: businessType,
       profileImage: profileImage 
     });
     Alert.alert('Success', 'Business Profile updated successfully!');
@@ -80,6 +84,12 @@ export default function BusinessProfileScreen({ navigation }) {
           <Text style={styles.label}>Address Location</Text>
           <TextInput style={[styles.input, styles.textArea]} value={address} onChangeText={setAddress} multiline numberOfLines={3} />
           
+          <Text style={styles.label}>Country</Text>
+          <TextInput style={styles.input} value={country} onChangeText={setCountry} placeholder="e.g. USA, Pakistan, UK" />
+          
+          <Text style={styles.label}>Business Type</Text>
+          <TextInput style={styles.input} value={businessType} onChangeText={setBusinessType} placeholder="e.g. Retail, Service, Personal" />
+
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
             <Text style={styles.saveText}>Save Profile</Text>
           </TouchableOpacity>

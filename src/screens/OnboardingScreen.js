@@ -10,20 +10,38 @@ export default function OnboardingScreen({ navigation }) {
 
   const slides = [
     {
-      title: getTranslation('onboardingTitle1'),
-      desc: getTranslation('onboardingDesc1'),
+      title: getTranslation('onboardingTitle1') || 'Track Credits',
+      desc: getTranslation('onboardingDesc1') || 'Easily manage what you owe and what you are owed in one place.',
       icon: 'account-balance-wallet',
       color: '#0F8243',
     },
     {
-      title: getTranslation('onboardingTitle2'),
-      desc: getTranslation('onboardingDesc2'),
-      icon: 'message',
+      title: getTranslation('onboardingTitle2') || 'Global Currencies',
+      desc: getTranslation('onboardingDesc2') || 'Support for all global currencies and offline countries, making cross-border business easy.',
+      icon: 'public',
+      color: '#F59E0B',
+    },
+    {
+      title: getTranslation('onboardingTitle3') || 'Sync with Peers',
+      desc: getTranslation('onboardingDesc3') || 'Pair accounts with other merchants to auto-validate mutual lending records transparently.',
+      icon: 'sync-alt',
       color: '#3B82F6',
     },
     {
-      title: getTranslation('onboardingTitle3'),
-      desc: getTranslation('onboardingDesc3'),
+      title: getTranslation('onboardingTitle4') || 'Invite via WhatsApp',
+      desc: getTranslation('onboardingDesc4') || 'Seamlessly invite un-registered customers or peers straight through your favorite messaging apps.',
+      icon: 'share',
+      color: '#10B981',
+    },
+    {
+      title: getTranslation('onboardingTitle5') || 'Automated PDF Reports',
+      desc: getTranslation('onboardingDesc5') || 'Generate and share professional PDF statements and receipts instantly.',
+      icon: 'picture-as-pdf',
+      color: '#EF4444',
+    },
+    {
+      title: getTranslation('onboardingTitle6') || 'Secure Cloud Backup',
+      desc: getTranslation('onboardingDesc6') || 'Your ledger is automatically backed up. Never lose your critical business data.',
       icon: 'cloud-done',
       color: '#8B5CF6',
     },

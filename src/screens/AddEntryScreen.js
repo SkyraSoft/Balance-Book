@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useData } from '../context/DataContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
@@ -8,16 +8,21 @@ import Icon from '@expo/vector-icons/MaterialIcons';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Header from '../components/Header';
+import { detectAnomaly } from '../utils/aiHeuristics';
 
 export default function AddEntryScreen({ route, navigation }) {
   const { customerId, type: initialType = 'gave' } = route.params;
-  const { addTransaction, customers, getTranslation, getCurrencySymbol } = useData();
+  const { addTransaction, customers, getCustomerTransactions, getTranslation, getCurrencySymbol } = useData();
   const [type, setType] = useState(initialType);
   const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(''); // This acts as title
+  const [description, setDescription] = useState(''); // New description field
   const [category, setCategory] = useState('Goods'); // 'Goods', 'Services', 'Cash', 'Other'
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [useRepaymentDate, setUseRepaymentDate] = useState(false);
+  const [dueDate, setDueDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
 
   const customer = customers.find(c => c.id === customerId || c._id === customerId) || { name: 'Customer' };
   const isGave = type === 'gave';
@@ -25,13 +30,34 @@ export default function AddEntryScreen({ route, navigation }) {
 
   const categories = ['Goods', 'Services', 'Cash', 'Other'];
 
-  const handleSave = async () => {
+  const handleSave = async (forceSave = false) => {
     if (!amount || parseFloat(amount) <= 0) {
       Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
-    const dueDate = new Date(date);
-    dueDate.setDate(dueDate.getDate() + 7);
+
+    if (forceSave !== true && customer.pairedUserId) {
+      const rawTransactions = getCustomerTransactions(customer.id || customer._id);
+      const { isAnomaly, avgAmount } = detectAnomaly(parseFloat(amount), rawTransactions);
+      if (isAnomaly) {
+        Alert.alert(
+          'Smart Alert: Unusual Amount',
+          `This amount (${getCurrencySymbol()}${amount}) is unusually high compared to your typical history with ${customer.name} (Avg: ${getCurrencySymbol()}${avgAmount.toFixed(2)}).\n\nAre you sure you want to proceed?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Yes, Proceed', style: 'destructive', onPress: () => handleSave(true) }
+          ]
+        );
+        return;
+      }
+    }
+    let finalDueDate;
+    if (useRepaymentDate) {
+      finalDueDate = new Date(dueDate);
+    } else {
+      finalDueDate = new Date(date);
+      finalDueDate.setDate(finalDueDate.getDate() + 7); // Default 7 days
+    }
     
     // Save entry with category tag prepended to note
     const noteWithTag = `[${category}] ${note.trim() || 'No description'}`;
@@ -45,9 +71,10 @@ export default function AddEntryScreen({ route, navigation }) {
       amount: parseFloat(amount),
       type,
       note: noteWithTag,
+      description: description.trim(),
       date: transactionDate.toISOString(),
-      dueDate: format(dueDate, 'yyyy-MM-dd'),
-      status: 'pending',
+      dueDate: format(finalDueDate, 'yyyy-MM-dd'),
+      status: customer.pairedUserId ? 'pending' : 'confirmed',
     });
     Alert.alert('Success', 'Entry added');
     navigation.goBack();
@@ -117,16 +144,55 @@ export default function AddEntryScreen({ route, navigation }) {
   
           <View style={styles.detailsContainer}>
             <Input
-              placeholder={getTranslation('notePlaceholder')}
+              placeholder="Title"
               value={note}
               onChangeText={setNote}
             />
+            
+            <View style={styles.descriptionWrapper}>
+              <Text style={styles.label}>Description (Optional)</Text>
+              <TextInput
+                style={styles.descriptionInput}
+                placeholder="Why did you borrow/lend this?"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                maxLength={350}
+                textAlignVertical="top"
+              />
+              <Text style={styles.charCount}>{description.length}/350</Text>
+            </View>
   
             <View style={styles.dateWrapper}>
               <Icon name="calendar-today" size={20} color={COLORS.textLight} />
               <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
                 <Text style={styles.dateText}>{format(date, 'dd MMM yyyy')}</Text>
               </TouchableOpacity>
+            </View>
+
+            {/* Repayment Reminder Section */}
+            <View style={styles.repaymentSection}>
+              <View style={styles.repaymentHeader}>
+                <Icon name="alarm" size={20} color={COLORS.primary} />
+                <Text style={styles.repaymentTitle}>{isGave ? 'Expected Payment Date' : 'Set Repayment Reminder'}</Text>
+                <Switch
+                  value={useRepaymentDate}
+                  onValueChange={setUseRepaymentDate}
+                  trackColor={{ false: '#E2E8F0', true: COLORS.primaryLight }}
+                  thumbColor={useRepaymentDate ? COLORS.primary : '#f4f3f4'}
+                  style={{ marginLeft: 'auto' }}
+                />
+              </View>
+              {useRepaymentDate && (
+                <View style={[styles.dateWrapper, { marginTop: SIZES.sm }]}>
+                  <Text style={styles.label}>{isGave ? 'Expected On:' : 'Repayment Due On:'}</Text>
+                  <TouchableOpacity style={[styles.dateBtn, { marginLeft: 10 }]} onPress={() => setShowDueDatePicker(true)}>
+                    <Text style={[styles.dateText, { color: COLORS.primary, fontWeight: 'bold' }]}>
+                      {format(dueDate, 'dd MMM yyyy')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
   
@@ -138,6 +204,19 @@ export default function AddEntryScreen({ route, navigation }) {
               onChange={(event, selectedDate) => {
                 setShowDatePicker(false);
                 if (selectedDate) setDate(selectedDate);
+              }}
+            />
+          )}
+
+          {showDueDatePicker && (
+            <DateTimePicker
+              value={dueDate}
+              mode="date"
+              display="default"
+              minimumDate={new Date()}
+              onChange={(event, selectedDate) => {
+                setShowDueDatePicker(false);
+                if (selectedDate) setDueDate(selectedDate);
               }}
             />
           )}
@@ -256,6 +335,25 @@ const styles = StyleSheet.create({
   detailsContainer: {
     marginHorizontal: SIZES.lg,
   },
+  descriptionWrapper: {
+    marginTop: SIZES.md,
+  },
+  descriptionInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    padding: SIZES.md,
+    fontSize: 14,
+    color: COLORS.text,
+    backgroundColor: COLORS.white,
+    height: 100,
+  },
+  charCount: {
+    textAlign: 'right',
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 4,
+  },
   dateWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -274,6 +372,24 @@ const styles = StyleSheet.create({
     fontSize: SIZES.fontMd,
     color: COLORS.text,
     fontFamily: FONTS.medium,
+  },
+  repaymentSection: {
+    marginTop: SIZES.lg,
+    padding: SIZES.md,
+    backgroundColor: '#F8FAFC',
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  repaymentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  repaymentTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
   },
   footer: { 
     padding: SIZES.lg,

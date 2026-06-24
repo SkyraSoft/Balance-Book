@@ -6,9 +6,15 @@ import { COLORS, SIZES, FONTS, SHADOWS } from '../utils/theme';
 import Header from '../components/Header';
 
 export default function CustomersScreen({ navigation }) {
-  const { customers, getTranslation, getCurrencySymbol } = useData();
+  const { customers, getTranslation, getCurrencySymbol, activeWorkspace, token } = useData();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All'); // 'All', 'Give', 'Get'
+
+  let canAddCustomer = true;
+  if (activeWorkspace !== 'personal') {
+    const role = activeWorkspace.roles?.[token] || 'viewer';
+    if (role === 'viewer') canAddCustomer = false;
+  }
 
   const filteredCustomers = customers.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || (c.phone && c.phone.includes(search));
@@ -90,13 +96,15 @@ export default function CustomersScreen({ navigation }) {
         )}
       />
 
-      <TouchableOpacity 
-        style={styles.fab} 
-        onPress={() => navigation.navigate('CustomersTab', { screen: 'AddCustomer' })}
-      >
-        <Icon name="person-add" size={24} color={COLORS.white} />
-        <Text style={styles.fabText}>{getTranslation('addCustomer')}</Text>
-      </TouchableOpacity>
+      {canAddCustomer && (
+        <TouchableOpacity 
+          style={styles.fab} 
+          onPress={() => navigation.navigate('CustomersTab', { screen: 'AddCustomer' })}
+        >
+          <Icon name="person-add" size={24} color={COLORS.white} />
+          <Text style={styles.fabText}>{getTranslation('addCustomer')}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

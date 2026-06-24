@@ -1,26 +1,43 @@
 {
   "project_info": {
-    "project_number": "951317980572",
-    "project_id": "balancebook-b0fb0",
-    "storage_bucket": "balancebook-b0fb0.firebasestorage.app"
+    "project_number": "127535177104",
+    "project_id": "balance-book-64d1b",
+    "storage_bucket": "balance-book-64d1b.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:951317980572:android:balancebook_android_placeholder",
+        "mobilesdk_app_id": "1:127535177104:android:37eae42de28ea1ab862715",
         "android_client_info": {
           "package_name": "com.skyrasoft.balancebook"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "127535177104-tgjuirp68472hs35rv2cinljbgluq4uh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCeAIzojhuqv_Kerms46Y5XZ8V-lZe5CTc"
+          "current_key": "AIzaSyCHP0RnXP3zVZayQeZ6ShTVpvaE1Xv4Jsc"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "127535177104-tgjuirp68472hs35rv2cinljbgluq4uh.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "127535177104-rj4d4d8271nm1mqlhf8klum1gd770aq2.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.skyrasoft.balancebook"
+              }
+            }
+          ]
         }
       }
     }

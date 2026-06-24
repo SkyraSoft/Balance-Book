@@ -8,6 +8,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useData } from '../context/DataContext';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../utils/theme';
 import Header from '../components/Header';
+import { Platform } from 'react-native';
 
 export default function ReportsScreen() {
   const { customers, transactions, getTranslation, getCurrencySymbol, settings } = useData();
@@ -236,9 +237,9 @@ export default function ReportsScreen() {
                 </div>
               </td>
               <td style="width: 33%; padding: 5px;">
-                <div class="summary-box" style="border-left: 4px solid #0d6efd;">
-                  <div class="summary-label">Net Outstanding</div>
-                  <div class="summary-val" style="color: ${pending > 0 ? '#dc3545' : '#198754'};">${currencySymbol}${pending.toLocaleString()}</div>
+                <div class="summary-box" style="border-left: 4px solid ${pending >= 0 ? '#dc3545' : '#198754'};">
+                  <div class="summary-label">${pending >= 0 ? 'Net Pending Credit' : 'Net Pending Debit'}</div>
+                  <div class="summary-val" style="color: ${pending >= 0 ? '#dc3545' : '#198754'};">${currencySymbol}${Math.abs(pending).toLocaleString()}</div>
                 </div>
               </td>
             </tr>
@@ -318,10 +319,10 @@ export default function ReportsScreen() {
             {getCurrencySymbol()}{totalReceived.toLocaleString()}
           </Text>
         </View>
-        <View style={[styles.statCard, { borderLeftColor: COLORS.primary }]}>
-          <Text style={styles.statLabel}>Net Pending Credit</Text>
-          <Text style={[styles.statAmount, { color: pending > 0 ? COLORS.danger : COLORS.success }]}>
-            {getCurrencySymbol()}{pending.toLocaleString()}
+        <View style={[styles.statCard, { borderLeftColor: pending >= 0 ? COLORS.danger : COLORS.success }]}>
+          <Text style={styles.statLabel}>{pending >= 0 ? 'Net Pending Credit' : 'Net Pending Debit'}</Text>
+          <Text style={[styles.statAmount, { color: pending >= 0 ? COLORS.danger : COLORS.success }]}>
+            {getCurrencySymbol()}{Math.abs(pending).toLocaleString()}
           </Text>
         </View>
         <View style={[styles.statCard, { borderLeftColor: COLORS.textMuted }]}>
@@ -525,12 +526,12 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     overflow: 'hidden',
     width: 150,
-    height: 40,
+    height: Platform.OS === 'android' ? 50 : 40,
     justifyContent: 'center',
   },
   pickerStyle: {
     width: 150,
-    height: 40,
+    height: Platform.OS === 'android' ? 50 : 40,
     color: COLORS.primary,
   },
   arrowBtn: {

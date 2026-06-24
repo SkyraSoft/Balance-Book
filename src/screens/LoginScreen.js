@@ -13,11 +13,17 @@ export default function LoginScreen() {
   const [storeName, setStoreName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleAuth = async () => {
     if (isRegistering) {
       if (!email.trim() || !password.trim() || !confirmPassword.trim() || !storeName.trim() || !phone.trim()) {
         Alert.alert('Error', 'Please fill in all fields.');
+        return;
+      }
+      if (password.length < 8) {
+        Alert.alert('Security Error', 'For your security, password must be at least 8 characters long.');
         return;
       }
       if (password !== confirmPassword) {
@@ -106,7 +112,7 @@ export default function LoginScreen() {
             <Icon name="email" size={20} color={COLORS.textLight} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Email Address"
+              placeholder="Email or Phone Number"
               placeholderTextColor={COLORS.textMuted}
               value={email}
               onChangeText={setEmail}
@@ -122,12 +128,15 @@ export default function LoginScreen() {
               style={styles.input}
               placeholder="Password"
               placeholderTextColor={COLORS.textMuted}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
               autoCapitalize="none"
               autoCorrect={false}
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              <Icon name={showPassword ? "visibility" : "visibility-off"} size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
           </View>
 
           {isRegistering && (
@@ -137,12 +146,15 @@ export default function LoginScreen() {
                 style={styles.input}
                 placeholder="Confirm Password"
                 placeholderTextColor={COLORS.textMuted}
-                secureTextEntry
+                secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
+              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
+                <Icon name={showConfirmPassword ? "visibility" : "visibility-off"} size={20} color={COLORS.textLight} />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -169,8 +181,7 @@ export default function LoginScreen() {
           {!isRegistering && (
             <View style={styles.hintContainer}>
               <Text style={styles.hintTitle}>Demo Accounts:</Text>
-              <Text style={styles.hintText}>• Owner/Admin: <Text style={styles.bold}>admin@khata.com</Text> / <Text style={styles.bold}>admin123</Text></Text>
-              <Text style={styles.hintText}>• Store Clerk: <Text style={styles.bold}>store@khata.com</Text> / <Text style={styles.bold}>store123</Text></Text>
+              <Text style={styles.hintText}>• Owner/Admin: <Text style={styles.bold}>admin@balancebook.com</Text> / <Text style={styles.bold}>123456asdfg</Text></Text>
             </View>
           )}
         </View>
@@ -242,6 +253,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: COLORS.text,
+  },
+  eyeIcon: {
+    padding: SIZES.sm,
   },
   btn: {
     width: '100%',

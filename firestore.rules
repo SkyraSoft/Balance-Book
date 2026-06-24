@@ -18,28 +18,41 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Global Content (CMS)
+    match /appContent/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Users Collection
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated(); // allow register
+      allow read: if isAuthenticated(); // Must be logged in to search users
+      allow update: if isOwner(userId) || 
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pairedUsers'])) || 
+                    isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() || true; // allow register which occurs after Firebase Auth
     }
 
     // Customers Collection
     match /customers/{customerId} {
       allow read, write: if isAuthenticated() && (
         (resource == null) || 
-        (resource.data.userId == request.auth.uid || resource.data.pairedUserId == request.auth.uid || isAdmin())
+        (resource.data.userId == request.auth.uid || resource.data.pairedUserId == request.auth.uid || isAdmin() ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && resource.data.normalizedPhone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.normalizedPhone))
       );
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || request.resource.data.pairedUserId == request.auth.uid);
     }
 
     // Transactions Collection
     match /transactions/{transactionId} {
       allow read, write: if isAuthenticated() && (
         (resource == null) || 
-        (resource.data.userId == request.auth.uid || isAdmin())
+        (resource.data.userId == request.auth.uid || isAdmin() || 
+         (exists(/databases/$(database)/documents/users/$(resource.data.userId)) && request.auth.uid in get(/databases/$(database)/documents/users/$(resource.data.userId)).data.pairedUsers))
       );
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || 
+        (exists(/databases/$(database)/documents/users/$(request.resource.data.userId)) && request.auth.uid in get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.pairedUsers));
     }
 
     // Notifications Collection
@@ -59,6 +72,48 @@ service cloud.firestore {
       );
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin();
+    }
+
+    // --- BUSINESS WORKSPACES (SHARED LEDGERS) ---
+    
+    // Helper to get business role
+    function getBusinessRole(businessId) {
+      let biz = get(/databases/$(database)/documents/businesses/$(businessId));
+      return biz.data.roles[request.auth.uid];
+    }
+
+    match /businesses/{businessId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.memberIds;
+      allow create: if isAuthenticated() && request.resource.data.roles[request.auth.uid] == 'admin';
+      allow update: if isAuthenticated() && resource.data.roles[request.auth.uid] == 'admin';
+      allow delete: if isAuthenticated() && resource.data.roles[request.auth.uid] == 'admin';
+
+      match /customers/{customerId} {
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/businesses/$(businessId)).data.memberIds;
+        allow create, update: if isAuthenticated() && 
+          getBusinessRole(businessId) in ['admin', 'partner', 'sender', 'receiver'];
+        allow delete: if isAuthenticated() && getBusinessRole(businessId) == 'admin';
+      }
+
+      match /transactions/{transactionId} {
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/businesses/$(businessId)).data.memberIds;
+        
+        allow create: if isAuthenticated() && (
+          getBusinessRole(businessId) in ['admin', 'partner'] ||
+          (getBusinessRole(businessId) == 'sender' && request.resource.data.type == 'gave') ||
+          (getBusinessRole(businessId) == 'receiver' && request.resource.data.type == 'got')
+        );
+
+        allow update: if isAuthenticated() && (
+          getBusinessRole(businessId) in ['admin', 'partner'] ||
+          // Allow status update (like pending -> approved) for any involved role?
+          // For now restrict strictly
+          (getBusinessRole(businessId) == 'sender' && request.resource.data.type == 'gave') ||
+          (getBusinessRole(businessId) == 'receiver' && request.resource.data.type == 'got')
+        );
+
+        allow delete: if isAuthenticated() && getBusinessRole(businessId) == 'admin';
+      }
     }
   }
 }

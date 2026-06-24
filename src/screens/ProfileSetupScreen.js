@@ -7,6 +7,7 @@ import Button from '../components/Button';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { CURRENCIES } from '../utils/currencies';
+import { Country, State } from 'country-state-city';
 
 export default function ProfileSetupScreen() {
   const { settings, completeOnboarding, getTranslation } = useData();
@@ -30,6 +31,15 @@ export default function ProfileSetupScreen() {
   const [showCountryMenu, setShowCountryMenu] = useState(false);
   const [showStateMenu, setShowStateMenu] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
+  const [countrySearch, setCountrySearch] = useState('');
+  const [stateSearch, setStateSearch] = useState('');
+
+  // Country and State data
+  const allCountries = Country.getAllCountries();
+  const availableStates = country ? State.getStatesOfCountry(country) : [];
+
+  const filteredCountries = allCountries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()));
+  const filteredStates = availableStates.filter(s => s.name.toLowerCase().includes(stateSearch.toLowerCase()));
 
   // Prefill details from settings when they load
   useEffect(() => {
@@ -49,13 +59,7 @@ export default function ProfileSetupScreen() {
     }
   }, [settings]);
 
-  const countriesData = {
-    'Pakistan': ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad Capital Territory', 'Gilgit-Baltistan', 'Azad Kashmir'],
-    'India': ['Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Uttar Pradesh', 'Gujarat', 'West Bengal', 'Punjab', 'Other'],
-    'United States': ['California', 'New York', 'Texas', 'Florida', 'Illinois', 'Washington', 'Other'],
-    'United Kingdom': ['England', 'Scotland', 'Wales', 'Northern Ireland'],
-    'United Arab Emirates': ['Abu Dhabi', 'Dubai', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Ras Al Khaimah', 'Fujairah']
-  };
+
 
   const languages = [
     { code: 'en', label: 'English' },
@@ -65,7 +69,7 @@ export default function ProfileSetupScreen() {
     { code: 'es', label: 'Español (Spanish)' },
   ];
 
-  const businessTypes = ['Retail', 'Wholesale', 'Services', 'Food/Restaurant', 'Clothing', 'Electronics', 'Other'];
+  const businessTypes = ['Freelancer', 'Individual / Personal', 'Retail', 'Wholesale', 'Services', 'Corporate', 'Food/Restaurant', 'Clothing', 'Electronics', 'Other'];
   const positions = ['Owner', 'Partner', 'Manager', 'Accountant', 'Employee'];
   const referralSources = ['Social Media', 'Friend/Referral', 'Play Store', 'Online Search', 'Ad', 'Other'];
   const purposes = ['Track credit', 'Sync with peers', 'Export invoices', 'Monthly reporting', 'All of the above'];
@@ -110,7 +114,7 @@ export default function ProfileSetupScreen() {
       language: selectedLang,
       currency: selectedCurr,
       profileImage: profileImage,
-      country: country.trim(),
+      country: Country.getCountryByCode(country)?.name || country.trim(),
       city: stateProvince.trim(),
       businessType,
       position,
@@ -187,26 +191,36 @@ export default function ProfileSetupScreen() {
                 }}
               >
                 <Text style={styles.dropdownText} numberOfLines={1}>
-                  {country || 'Select Country'}
+                  {country ? Country.getCountryByCode(country)?.name : 'Select Country'}
                 </Text>
                 <Icon name={showCountryMenu ? "arrow-drop-up" : "arrow-drop-down"} size={24} color={COLORS.textLight} />
               </TouchableOpacity>
               {showCountryMenu && (
                 <View style={styles.dropdownMenu}>
-                  <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
-                    {Object.keys(countriesData).map((c) => (
+                  <View style={styles.searchBoxContainer}>
+                    <Icon name="search" size={20} color={COLORS.textLight} />
+                    <TextInput
+                      style={styles.searchBox}
+                      placeholder="Search country..."
+                      value={countrySearch}
+                      onChangeText={setCountrySearch}
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+                  </View>
+                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                    {filteredCountries.map((c) => (
                       <TouchableOpacity 
-                        key={c} 
-                        style={[styles.dropdownItem, country === c && styles.dropdownItemActive]}
+                        key={c.isoCode} 
+                        style={[styles.dropdownItem, country === c.isoCode && styles.dropdownItemActive]}
                         onPress={() => {
-                          setCountry(c);
-                          const states = countriesData[c] || [];
-                          setStateProvince(states[0] || '');
+                          setCountry(c.isoCode);
+                          setStateProvince('');
                           setShowCountryMenu(false);
+                          setCountrySearch('');
                         }}
                       >
-                        <Text style={[styles.dropdownItemText, country === c && styles.dropdownItemTextActive]}>
-                          {c}
+                        <Text style={[styles.dropdownItemText, country === c.isoCode && styles.dropdownItemTextActive]}>
+                          {c.flag} {c.name}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -234,21 +248,43 @@ export default function ProfileSetupScreen() {
               </TouchableOpacity>
               {showStateMenu && country && (
                 <View style={styles.dropdownMenu}>
-                  <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
-                    {(countriesData[country] || []).map((s) => (
+                  <View style={styles.searchBoxContainer}>
+                    <Icon name="search" size={20} color={COLORS.textLight} />
+                    <TextInput
+                      style={styles.searchBox}
+                      placeholder="Search state..."
+                      value={stateSearch}
+                      onChangeText={setStateSearch}
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+                  </View>
+                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                    {filteredStates.map((s) => (
                       <TouchableOpacity 
-                        key={s} 
-                        style={[styles.dropdownItem, stateProvince === s && styles.dropdownItemActive]}
+                        key={s.isoCode} 
+                        style={[styles.dropdownItem, stateProvince === s.name && styles.dropdownItemActive]}
                         onPress={() => {
-                          setStateProvince(s);
+                          setStateProvince(s.name);
                           setShowStateMenu(false);
+                          setStateSearch('');
                         }}
                       >
-                        <Text style={[styles.dropdownItemText, stateProvince === s && styles.dropdownItemTextActive]}>
-                          {s}
+                        <Text style={[styles.dropdownItemText, stateProvince === s.name && styles.dropdownItemTextActive]}>
+                          {s.name}
                         </Text>
                       </TouchableOpacity>
                     ))}
+                    {filteredStates.length === 0 && (
+                      <TouchableOpacity 
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setStateProvince('Other');
+                          setShowStateMenu(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>Other / N/A</Text>
+                      </TouchableOpacity>
+                    )}
                   </ScrollView>
                 </View>
               )}

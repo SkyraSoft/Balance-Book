@@ -1,7 +1,6 @@
 {
   "expo": {
     "name": "Balance Book",
-    "owner": "skyrasoftappdevs-team",
     "slug": "balancebook",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -35,7 +34,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "fcbc6035-5c91-4790-9f4f-f3b5db337244"
+        "projectId": "0a0afb45-478a-4d74-889f-e8aa783edcea"
       }
     }
   }

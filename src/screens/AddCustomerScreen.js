@@ -11,7 +11,9 @@ import {
   Modal, 
   FlatList, 
   TextInput,
-  ActivityIndicator 
+  ActivityIndicator,
+  Share,
+  Linking
 } from 'react-native';
 import { useData } from '../context/DataContext';
 import Icon from '@expo/vector-icons/MaterialIcons';
@@ -24,7 +26,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import Header from '../components/Header';
 
 export default function AddCustomerScreen({ navigation }) {
-  const { addCustomer, token, isOnline } = useData();
+  const { addCustomer, token, isOnline, settings } = useData();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [balance, setBalance] = useState('');
@@ -38,6 +40,54 @@ export default function AddCustomerScreen({ navigation }) {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [registeredUsersMap, setRegisteredUsersMap] = useState({}); // phone -> userId map
   const [selectedPairedUserId, setSelectedPairedUserId] = useState(null);
+
+  const handleInvite = async (channel) => {
+    const bizName = settings?.businessName || 'our Store';
+    const inviteMsg = `Hi ${name.trim()}! I've added you to my ledger on BalanceBook to track our transactions transparently. You can install the app and pair our ledger so they sync automatically. Download here: https://play.google.com/store/apps/details?id=com.balancebook.app`;
+    const cleanPhone = phone.trim().replace(/[^\d+]/g, '');
+    
+    let url = '';
+    if (channel === 'whatsapp') {
+      url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(inviteMsg)}`;
+    } else if (channel === 'sms') {
+      const separator = Platform.OS === 'ios' ? '&' : '?';
+      url = `sms:${cleanPhone}${separator}body=${encodeURIComponent(inviteMsg)}`;
+    } else if (channel === 'wechat') {
+      url = `wechat://`;
+    }
+
+    if (url) {
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+          navigation.goBack();
+          return;
+        } else {
+          Alert.alert('Not Supported', `We couldn't open the app for ${channel}. We will open general Share instead.`, [
+            {
+              text: 'OK',
+              onPress: async () => {
+                await Share.share({ message: inviteMsg });
+                navigation.goBack();
+              }
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error launching link:', err);
+        await Share.share({ message: inviteMsg });
+        navigation.goBack();
+      }
+    } else {
+      try {
+        await Share.share({ message: inviteMsg });
+      } catch (e) {
+        console.error(e);
+      }
+      navigation.goBack();
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim() || !phone.trim()) {
@@ -53,7 +103,21 @@ export default function AddCustomerScreen({ navigation }) {
       balanceType: balanceType,
       pairedUserId: selectedPairedUserId,
     });
-    navigation.goBack();
+    
+    if (!selectedPairedUserId) {
+      Alert.alert(
+        'Invite & Connect Ledger',
+        `${name.trim()} is not on BalanceBook yet. Select an option to invite them to Pair Peer Ledger for auto-syncing:`,
+        [
+          { text: 'Cancel / Skip', onPress: () => navigation.goBack(), style: 'cancel' },
+          { text: 'WhatsApp', onPress: () => handleInvite('whatsapp') },
+          { text: 'SMS Messages', onPress: () => handleInvite('sms') },
+          { text: 'More Apps (Share)', onPress: () => handleInvite('share') },
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
   };
 
   const cleanPhoneNumber = (number) => {

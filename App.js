@@ -3,8 +3,15 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import { Platform } from 'react-native';
 import { DataProvider, useData } from './src/context/DataContext';
 import { COLORS } from './src/utils/theme';
+
+if (Platform.OS === 'web') {
+  const style = document.createElement('style');
+  style.textContent = `textarea, select, input, button { outline: none !important; }`;
+  document.head.append(style);
+}
 
 // User Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -26,6 +33,7 @@ import PrivacyScreen from './src/screens/PrivacyScreen';
 import HelpScreen from './src/screens/HelpScreen';
 import PeerConnectionScreen from './src/screens/PeerConnectionScreen';
 import NotificationsListScreen from './src/screens/NotificationsListScreen';
+import UserGuideScreen from './src/screens/UserGuideScreen';
 
 // Auth / Onboarding Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -63,12 +71,15 @@ function CustomersStack() {
   );
 }
 
+import BusinessManagementScreen from './src/screens/BusinessManagementScreen';
+
 // 2. Navigation Stack for User Settings Launcher
 function SettingsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="SettingsMain" component={SettingsScreen} />
       <Stack.Screen name="BusinessProfile" component={BusinessProfileScreen} />
+      <Stack.Screen name="BusinessManagement" component={BusinessManagementScreen} />
       <Stack.Screen name="LanguageCurrency" component={LanguageCurrencyScreen} />
       <Stack.Screen name="BackupRestore" component={BackupRestoreScreen} />
       <Stack.Screen name="ExportData" component={ExportDataScreen} />
@@ -77,6 +88,7 @@ function SettingsStack() {
       <Stack.Screen name="HelpSupport" component={HelpScreen} />
       <Stack.Screen name="Terms" component={TermsScreen} />
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
+      <Stack.Screen name="UserGuide" component={UserGuideScreen} />
       <Stack.Screen name="PeerConnection" component={PeerConnectionScreen} />
       <Stack.Screen name="NotificationsList" component={NotificationsListScreen} />
     </Stack.Navigator>

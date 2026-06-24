@@ -10,6 +10,7 @@ export default function HomeScreen({ navigation }) {
   const { customers, transactions, getTranslation, getCurrencySymbol, settings } = useData();
   const [activeTab, setActiveTab] = useState('debtors'); // 'debtors' or 'creditors'
   const [searchQuery, setSearchQuery] = useState('');
+  const [todoTab, setTodoTab] = useState('collect'); // 'collect' or 'pay'
 
   // Filter based on balances (Gave < 0 means they owe us -> debtors; Got > 0 means we owe them -> creditors)
   const topDebtors = [...customers]
@@ -32,6 +33,16 @@ export default function HomeScreen({ navigation }) {
   // Calculate totals
   const totalIn = customers.filter(c => c.balance > 0).reduce((sum, c) => sum + c.balance, 0);
   const totalOut = customers.filter(c => c.balance < 0).reduce((sum, c) => sum + Math.abs(c.balance), 0);
+
+  // Today's To-Dos
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const todayDueTxs = transactions.filter(t => {
+    if (!t.dueDate || t.status !== 'pending') return false;
+    return new Date(t.dueDate).toISOString().split('T')[0] === todayDateStr;
+  });
+  const collectToday = todayDueTxs.filter(t => t.type === 'gave');
+  const payToday = todayDueTxs.filter(t => t.type === 'got');
+  const activeTodos = todoTab === 'collect' ? collectToday : payToday;
 
   // --- Compute Weekly Ledger Trend (Previous, Current, Coming 1, Coming 2) ---
   const calculateWeeklyTrend = () => {
@@ -82,12 +93,12 @@ export default function HomeScreen({ navigation }) {
       return d >= range.start && d <= range.end;
     }).reduce((s, t) => s + t.amount, 0);
 
-    // Heuristics for predictions
-    const coming1Gave = Math.round(currGave * 0.9);
-    const coming1Got = Math.round(coming1Due + (currGot * 0.8));
+    // Actual Scheduled Amounts for upcoming weeks (No AI projection)
+    const coming1Gave = 0;
+    const coming1Got = coming1Due;
 
-    const coming2Gave = Math.round(currGave * 0.85);
-    const coming2Got = Math.round(coming2Due + (currGot * 0.75));
+    const coming2Gave = 0;
+    const coming2Got = coming2Due;
 
     return [
       { label: 'Prev Week', gave: prevGave, got: prevGot },
@@ -110,6 +121,17 @@ export default function HomeScreen({ navigation }) {
       <Header />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.dashboardContainer}>
+          {/* Welcome/Greeting section */}
+          <View style={styles.welcomeSection}>
+            <View>
+              <Text style={styles.welcomeTitle}>Welcome back,</Text>
+              <Text style={styles.welcomeSubtitle}>{settings?.businessName || 'Merchant Ledger'}</Text>
+            </View>
+            <View style={styles.headerIndicator}>
+              <Icon name="cloud-done" size={16} color={COLORS.primary} />
+              <Text style={styles.headerIndicatorText}>Live Sync</Text>
+            </View>
+          </View>
           
           {/* Customer Search Bar */}
           <View style={styles.searchBar}>
@@ -205,6 +227,73 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
+              {/* Today's To-Dos Section */}
+              <View style={styles.todosContainer}>
+                <View style={styles.todosHeader}>
+                  <Text style={styles.todosTitle}>Today's To-Dos</Text>
+                  <Text style={styles.todosSubtitle}>Payments due today</Text>
+                </View>
+                <View style={styles.tabsWrapper}>
+                  <TouchableOpacity 
+                    style={[styles.tabButton, todoTab === 'collect' && styles.tabButtonActive, { flex: 1, marginRight: 8 }]}
+                    onPress={() => setTodoTab('collect')}
+                  >
+                    <Text style={[styles.tabButtonText, todoTab === 'collect' && styles.tabButtonTextActive]}>
+                      Collect Today ({collectToday.length})
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.tabButton, todoTab === 'pay' && styles.tabButtonActive, { flex: 1 }]}
+                    onPress={() => setTodoTab('pay')}
+                  >
+                    <Text style={[styles.tabButtonText, todoTab === 'pay' && styles.tabButtonTextActive]}>
+                      Pay Today ({payToday.length})
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.todosList}>
+                  {activeTodos.length > 0 ? activeTodos.map((tx, idx) => {
+                    const customer = customers.find(c => c.id === tx.customerId);
+                    return (
+                      <View key={idx} style={styles.todoItem}>
+                        <View style={{flex: 1}}>
+                          <Text style={styles.todoName}>{customer?.name || 'Unknown'}</Text>
+                          <Text style={styles.todoSub}>{tx.note || 'No details'}</Text>
+                        </View>
+                        <Text style={[styles.todoAmount, todoTab === 'collect' ? { color: COLORS.success } : { color: COLORS.danger }]}>
+                          {getCurrencySymbol()}{tx.amount.toLocaleString()}
+                        </Text>
+                      </View>
+                    );
+                  }) : (
+                    <Text style={styles.noResultsText}>No payments scheduled for today.</Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Pair Peer Ledger CTA Card */}
+              <View style={styles.ctaCard}>
+                <View style={styles.ctaHeader}>
+                  <View style={styles.ctaIconContainer}>
+                    <Icon name="sync" size={22} color="#4F46E5" />
+                  </View>
+                  <View style={styles.ctaTitleContainer}>
+                    <Text style={styles.ctaTitle}>Pair Peer Ledger Sync</Text>
+                    <Text style={styles.ctaSubtitle}>Real-time auto-verification</Text>
+                  </View>
+                </View>
+                <Text style={styles.ctaBody}>
+                  Connect directly with other shopkeepers. Your mutual transactions will verify and sync in real-time, eliminating manual verification and ledger disputes!
+                </Text>
+                <TouchableOpacity 
+                  style={styles.ctaButton}
+                  onPress={() => navigation.navigate('PeerConnection')}
+                >
+                  <Icon name="link" size={18} color={COLORS.white} style={{ marginRight: 6 }} />
+                  <Text style={styles.ctaButtonText}>Pair Peer Ledger</Text>
+                </TouchableOpacity>
+              </View>
+
               {/* Weekly Ledger Trend Chart (Tapping navigates to WeeklyTrend screen) */}
               <TouchableOpacity 
                 style={styles.chartCard} 
@@ -269,16 +358,39 @@ export default function HomeScreen({ navigation }) {
                     style={[styles.debtorItem, idx < activeList.length - 1 && styles.debtorBorder]}
                     onPress={() => navigation.navigate('CustomersTab', { screen: 'CustomerDetail', params: { customerId: customer.id || customer._id }})}
                   >
-                    <View style={styles.debtorAvatar}>
-                      <Text style={styles.debtorAvatarText}>{customer.name.substring(0, 2).toUpperCase()}</Text>
+                    <View style={[
+                      styles.debtorAvatar, 
+                      { backgroundColor: activeTab === 'debtors' ? '#FEE2E2' : '#DCFCE7' }
+                    ]}>
+                      <Text style={[
+                        styles.debtorAvatarText, 
+                        { color: activeTab === 'debtors' ? COLORS.danger : COLORS.success }
+                      ]}>
+                        {customer.name.substring(0, 2).toUpperCase()}
+                      </Text>
                     </View>
                     <View style={styles.debtorInfo}>
-                      <Text style={styles.debtorName}>{customer.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={styles.debtorName}>{customer.name}</Text>
+                        {customer.pairedUserId && (
+                          <View style={styles.pairedBadgeMini}>
+                            <Icon name="link" size={10} color="#4F46E5" />
+                            <Text style={styles.pairedBadgeTextMini}>Sync</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={styles.debtorSub}>Last entry: {idx === 0 ? '2 days ago' : idx === 1 ? 'Yesterday' : 'Today'}</Text>
                     </View>
-                    <Text style={[styles.debtorAmount, { color: activeTab === 'debtors' ? COLORS.danger : COLORS.success }]}>
-                      {getCurrencySymbol()}{Math.abs(customer.balance).toLocaleString()}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Icon 
+                        name={activeTab === 'debtors' ? 'trending-down' : 'trending-up'} 
+                        size={16} 
+                        color={activeTab === 'debtors' ? COLORS.danger : COLORS.success} 
+                      />
+                      <Text style={[styles.debtorAmount, { color: activeTab === 'debtors' ? COLORS.danger : COLORS.success }]}>
+                        {getCurrencySymbol()}{Math.abs(customer.balance).toLocaleString()}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 )) : (
                   <View style={styles.debtorItem}>
@@ -300,6 +412,117 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  welcomeSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SIZES.md,
+    marginBottom: SIZES.sm,
+    backgroundColor: COLORS.white,
+    padding: SIZES.md,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
+  },
+  welcomeTitle: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    fontWeight: '600',
+  },
+  welcomeSubtitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginTop: 2,
+  },
+  headerIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  headerIndicatorText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  ctaCard: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+    borderWidth: 1,
+    borderRadius: SIZES.radiusLg,
+    padding: SIZES.md,
+    marginBottom: SIZES.lg,
+    ...SHADOWS.sm,
+  },
+  ctaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  ctaIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E0E7FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SIZES.md,
+  },
+  ctaTitleContainer: {
+    flex: 1,
+  },
+  ctaTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#312E81',
+  },
+  ctaSubtitle: {
+    fontSize: 11,
+    color: '#4338CA',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  ctaBody: {
+    fontSize: 12,
+    color: '#4B5563',
+    lineHeight: 18,
+    marginBottom: SIZES.md,
+  },
+  ctaButton: {
+    backgroundColor: '#4F46E5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: SIZES.radiusLg,
+    ...SHADOWS.sm,
+  },
+  ctaButtonText: {
+    color: COLORS.white,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  pairedBadgeMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+    borderWidth: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
+    gap: 2,
+  },
+  pairedBadgeTextMini: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#4F46E5',
+  },
   outerContainer: {
     flex: 1,
     backgroundColor: '#FAFBFC',
@@ -338,6 +561,15 @@ const styles = StyleSheet.create({
     ...SHADOWS.sm,
     marginTop: SIZES.xs,
   },
+  todoItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  todoName: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
+  todoSub: { fontSize: 12, color: COLORS.textLight },
+  todoAmount: { fontSize: 15, fontWeight: '800' },
+  todosContainer: { marginTop: 10, marginBottom: 20, backgroundColor: '#fff', borderRadius: 16, padding: 16, ...SHADOWS.sm },
+  todosHeader: { marginBottom: 12 },
+  todosTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  todosSubtitle: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  todosList: { marginTop: 12 },
   searchResultItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -424,6 +656,9 @@ const styles = StyleSheet.create({
   },
   btnGreen: {
     backgroundColor: '#059669',
+  },
+  btnPurple: {
+    backgroundColor: '#6366F1',
   },
   actionBtnText: {
     fontWeight: '700',

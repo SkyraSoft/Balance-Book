@@ -8,9 +8,9 @@ import Svg, { Path, Defs, LinearGradient, Stop, Circle, G, Line } from 'react-na
 
 export default function WeeklyTrendScreen({ navigation }) {
   const { transactions, getCurrencySymbol, getTranslation } = useData();
-  const [activeWeekIdx, setActiveWeekIdx] = useState(1); // Default to "This Week" (index 1)
+  const [activeWeekIdx, setActiveWeekIdx] = useState(3); // Default to "This Week" (index 3)
 
-  // Calculate Weekly Trend Data (4 weeks: Previous, Current, Next, Week +2)
+  // Calculate Weekly Trend Data (4 weeks: Week -3, Week -2, Prev Week, Current)
   const calculateWeeklyTrend = () => {
     const today = new Date();
     
@@ -24,10 +24,10 @@ export default function WeeklyTrendScreen({ navigation }) {
       return { start, end };
     };
 
+    const week3Range = getWeekRange(-3);
+    const week2Range = getWeekRange(-2);
     const prevRange = getWeekRange(-1);
     const currRange = getWeekRange(0);
-    const next1Range = getWeekRange(1);
-    const next2Range = getWeekRange(2);
 
     const filterTxsByRange = (start, end) => {
       return transactions.filter(t => {
@@ -36,37 +36,42 @@ export default function WeeklyTrendScreen({ navigation }) {
       });
     };
 
+    const week3Txs = filterTxsByRange(week3Range.start, week3Range.end);
+    const week2Txs = filterTxsByRange(week2Range.start, week2Range.end);
     const prevTxs = filterTxsByRange(prevRange.start, prevRange.end);
     const currTxs = filterTxsByRange(currRange.start, currRange.end);
     
+    const week3Gave = week3Txs.filter(t => t.type === 'gave').reduce((s, t) => s + t.amount, 0);
+    const week3Got = week3Txs.filter(t => t.type === 'got').reduce((s, t) => s + t.amount, 0);
+
+    const week2Gave = week2Txs.filter(t => t.type === 'gave').reduce((s, t) => s + t.amount, 0);
+    const week2Got = week2Txs.filter(t => t.type === 'got').reduce((s, t) => s + t.amount, 0);
+
     const prevGave = prevTxs.filter(t => t.type === 'gave').reduce((s, t) => s + t.amount, 0);
     const prevGot = prevTxs.filter(t => t.type === 'got').reduce((s, t) => s + t.amount, 0);
 
     const currGave = currTxs.filter(t => t.type === 'gave').reduce((s, t) => s + t.amount, 0);
     const currGot = currTxs.filter(t => t.type === 'got').reduce((s, t) => s + t.amount, 0);
 
-    // Coming weeks due balances
-    const getDueForRange = (start, end) => {
-      return transactions.filter(t => {
-        if (t.type !== 'gave' || t.status !== 'pending' || !t.dueDate) return false;
-        const d = new Date(t.dueDate);
-        return d >= start && d <= end;
-      }).reduce((s, t) => s + t.amount, 0);
-    };
-
-    const coming1Due = getDueForRange(next1Range.start, next1Range.end);
-    const coming2Due = getDueForRange(next2Range.start, next2Range.end);
-
-    // Projections
-    const next1Gave = Math.round(currGave * 0.9);
-    const next1Got = Math.round(coming1Due + (currGot * 0.8));
-
-    const next2Gave = Math.round(currGave * 0.85);
-    const next2Got = Math.round(coming2Due + (currGot * 0.75));
-
     return [
       { 
-        label: 'Prev Week', 
+        label: '3 Wks Ago', 
+        gave: week3Gave, 
+        got: week3Got, 
+        isForecast: false,
+        rangeLabel: `${week3Range.start.toLocaleDateString([], {day: 'numeric', month: 'short'})} - ${week3Range.end.toLocaleDateString([], {day: 'numeric', month: 'short'})}`,
+        txCount: week3Txs.length
+      },
+      { 
+        label: '2 Wks Ago', 
+        gave: week2Gave, 
+        got: week2Got, 
+        isForecast: false,
+        rangeLabel: `${week2Range.start.toLocaleDateString([], {day: 'numeric', month: 'short'})} - ${week2Range.end.toLocaleDateString([], {day: 'numeric', month: 'short'})}`,
+        txCount: week2Txs.length
+      },
+      { 
+        label: 'Last Week', 
         gave: prevGave, 
         got: prevGot, 
         isForecast: false,
@@ -80,22 +85,6 @@ export default function WeeklyTrendScreen({ navigation }) {
         isForecast: false,
         rangeLabel: `${currRange.start.toLocaleDateString([], {day: 'numeric', month: 'short'})} - ${currRange.end.toLocaleDateString([], {day: 'numeric', month: 'short'})}`,
         txCount: currTxs.length
-      },
-      { 
-        label: 'Next Week', 
-        gave: next1Gave, 
-        got: next1Got, 
-        isForecast: true,
-        rangeLabel: `${next1Range.start.toLocaleDateString([], {day: 'numeric', month: 'short'})} - ${next1Range.end.toLocaleDateString([], {day: 'numeric', month: 'short'})}`,
-        txCount: 'Forecast'
-      },
-      { 
-        label: 'Week +2', 
-        gave: next2Gave, 
-        got: next2Got, 
-        isForecast: true,
-        rangeLabel: `${next2Range.start.toLocaleDateString([], {day: 'numeric', month: 'short'})} - ${next2Range.end.toLocaleDateString([], {day: 'numeric', month: 'short'})}`,
-        txCount: 'Forecast'
       },
     ];
   };
@@ -255,7 +244,10 @@ export default function WeeklyTrendScreen({ navigation }) {
             </View>
           </View>
 
-          <View style={styles.netFlowBox}>
+          <View style={[
+            styles.netFlowBox,
+            netInflow >= 0 ? styles.netFlowPlus : styles.netFlowMinus
+          ]}>
             <Text style={styles.netFlowTitle}>Net Cash Flow</Text>
             <Text style={[styles.netFlowVal, { color: netInflow >= 0 ? COLORS.success : COLORS.danger }]}>
               {netInflow >= 0 ? '+' : ''}{getCurrencySymbol()}{netInflow.toLocaleString()}
@@ -274,15 +266,20 @@ export default function WeeklyTrendScreen({ navigation }) {
             <Text style={styles.detailVal}>{activeWeek.txCount}</Text>
           </View>
           
-          <Text style={styles.adviceBox}>
-            <Text style={{ fontWeight: '700' }}>Cash Recommendation: </Text>
-            {activeWeek.isForecast 
-              ? 'Estimate is based on outstanding ledger bills and peer sync alerts. Focus on collecting older outstanding debts.'
-              : netInflow >= 0 
-                ? 'Cash flow is positive. Your collections are exceeding new credit. Settle pending payouts.'
-                : 'New credit extensions are exceeding collection returns. Place limits on high-debt accounts.'
-            }
-          </Text>
+          <View style={styles.adviceContainer}>
+            <View style={styles.adviceHeader}>
+              <Icon name="lightbulb" size={18} color="#0284C7" />
+              <Text style={styles.adviceTitle}>Smart Recommendation</Text>
+            </View>
+            <Text style={styles.adviceBody}>
+              {activeWeek.isForecast 
+                ? 'Analysis is based on upcoming scheduled due dates for pending debts. Plan your cash flow accordingly.'
+                : netInflow >= 0 
+                  ? 'Cash flow is positive. Your collections are exceeding new credit. Settle pending payouts.'
+                  : 'New credit extensions are exceeding collection returns. Place limits on high-debt accounts.'
+              }
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -393,14 +390,29 @@ const styles = StyleSheet.create({
   },
   detailLabel: { fontSize: 12, color: COLORS.textLight, fontWeight: '500' },
   detailVal: { fontSize: 12, color: COLORS.text, fontWeight: '600' },
-  adviceBox: {
-    fontSize: 12,
-    color: '#0369A1',
-    lineHeight: 18,
+  adviceContainer: {
     backgroundColor: '#F0F9FF',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
     borderColor: '#E0F2FE',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  adviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  adviceTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0369A1',
+    textTransform: 'uppercase',
+  },
+  adviceBody: {
+    fontSize: 12,
+    color: '#0284C7',
+    lineHeight: 18,
   },
 });

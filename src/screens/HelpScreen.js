@@ -6,7 +6,7 @@ import { useData } from '../context/DataContext';
 import Header from '../components/Header';
 
 export default function HelpScreen({ navigation }) {
-  const { submitSupportTicket } = useData();
+  const { submitSupportTicket, globalContent } = useData();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Payment');
   const [message, setMessage] = useState('');
@@ -58,6 +58,19 @@ export default function HelpScreen({ navigation }) {
             onChangeText={setSearch}
           />
         </View>
+
+        {/* Dynamic Global CMS Intro & Contact */}
+        <View style={styles.contactInfoBox}>
+          <Text style={styles.contactIntroText}>{globalContent?.helpIntro || 'Having issues with your ledger? Contact our global support team available 24/7.'}</Text>
+          <View style={styles.contactRow}>
+            <Icon name="email" size={18} color={COLORS.primary} />
+            <Text style={styles.contactText}>{globalContent?.helpEmail || 'support@balancebook.app'}</Text>
+          </View>
+          <View style={styles.contactRow}>
+            <Icon name="phone" size={18} color={COLORS.primary} />
+            <Text style={styles.contactText}>{globalContent?.helpPhone || '+1-800-BALANCE'}</Text>
+          </View>
+        </View>
   
         {/* FAQ Grid Quick Categories */}
         <View style={styles.faqSection}>
@@ -65,30 +78,38 @@ export default function HelpScreen({ navigation }) {
           <View style={styles.faqGrid}>
             <TouchableOpacity 
               style={styles.faqCard}
-              onPress={() => Alert.alert('Quick Support', 'For quick support, call our customer care hotline at +92 300 1234567 or submit a message in the contact form below.')}
+              onPress={() => Alert.alert('Quick Support', `For quick support, call our customer care hotline at ${globalContent?.helpPhone} or submit a message in the contact form below.`)}
             >
-              <Icon name="help-outline" size={24} color={COLORS.primary} />
+              <View style={[styles.iconCircle, { backgroundColor: '#E0F2FE' }]}>
+                <Icon name="support-agent" size={24} color="#0284C7" />
+              </View>
               <Text style={styles.faqCardText}>Quick Support</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.faqCard}
-              onPress={() => Alert.alert('User Guide', 'Welcome to Balance Book! Use the Customers tab to manage store clients. Inside each ledger account, click YOU GAVE to log credit sales, or YOU GOT to log cash collections.')}
+              onPress={() => navigation.navigate('UserGuide')}
             >
-              <Icon name="book" size={24} color={COLORS.primary} />
+              <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
+                <Icon name="menu-book" size={24} color="#D97706" />
+              </View>
               <Text style={styles.faqCardText}>User Guide</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.faqCard}
               onPress={() => Alert.alert('Backup FAQ', 'Automatic cloud synchronization is enabled by default. If offline, transactions are stored in cache and will automatically upload once a connection is established.')}
             >
-              <Icon name="backup" size={24} color={COLORS.primary} />
+              <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
+                <Icon name="cloud-done" size={24} color="#16A34A" />
+              </View>
               <Text style={styles.faqCardText}>Backup FAQ</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.faqCard}
               onPress={() => Alert.alert('Payment Issues', 'If an entry shows incorrect balance totals, verify whether the transaction type is set to gave (reduces ledger due) or got (increases collection cash).')}
             >
-              <Icon name="payment" size={24} color={COLORS.primary} />
+              <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2' }]}>
+                <Icon name="account-balance-wallet" size={24} color="#DC2626" />
+              </View>
               <Text style={styles.faqCardText}>Payment Issues</Text>
             </TouchableOpacity>
           </View>
@@ -217,14 +238,47 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radiusLg,
     padding: SIZES.md,
     alignItems: 'center',
-    marginBottom: SIZES.sm,
+    marginBottom: SIZES.md,
     ...SHADOWS.sm,
   },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   faqCardText: {
-    marginTop: 8,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.text,
+  },
+  contactInfoBox: {
+    backgroundColor: '#EEF2FF',
+    padding: SIZES.lg,
+    borderRadius: SIZES.radiusLg,
+    marginBottom: SIZES.xl,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  contactIntroText: {
+    fontSize: 13,
+    color: '#3730A3',
+    lineHeight: 20,
+    marginBottom: 12,
+    fontWeight: '500',
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  contactText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#312E81',
+    marginLeft: 8,
   },
   formSection: {
     backgroundColor: COLORS.white,
